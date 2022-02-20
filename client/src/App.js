@@ -1,64 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import Grid from '@material-ui/core/Grid';
-import Box from '@material-ui/core/Box';
-import { IconButton } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
-import PhotoCameraRoundedIcon from "@material-ui/icons/PhotoCameraRounded";const useStyles = makeStyles((theme) => ({
-  root: {
-    height: "100%",
-    textAlign: 'center',
-  },
-  imgBox: {
-    maxWidth: "80%",
-    maxHeight: "80%",
-    margin: "10px"
-  },
-  img: {
-    height: "inherit",
-    maxWidth: "inherit",
-  },
-  input: {
-    display: "none"
-  }
-}));function App() {
-  const classes = useStyles();const [source, setSource] = useState("");const handleCapture = (target) => {
-    if (target.files) {
-      if (target.files.length !== 0) {
-        const file = target.files[0];
-        const newUrl = URL.createObjectURL(file);
-        setSource(newUrl);
-      }
-    }
-  };return (
-    <div className={classes.root}>
-      <Grid container>
-        <Grid item xs={12}>
-          <h5>Capture your image</h5>
-          {source &&
-            <Box display="flex" justifyContent="center" border={1} className={classes.imgBox}>
-              <img src={source} alt={"snap"} className={classes.img}></img>
-            </Box>}
-          <input
-            accept="image/*"
-            className={classes.input}
-            id="icon-button-file"
-            type="file"
-            capture="environment"
-            onChange={(e) => handleCapture(e.target)}
-          />
-          <label htmlFor="icon-button-file">
-            <IconButton
-              color="primary"
-              aria-label="upload picture"
-              component="span"
-            >
-              <PhotoCameraRoundedIcon fontSize="large" color="primary" />
-            </IconButton>
-          </label>
-        </Grid>
-      </Grid>
-    </div>
-  );
-}
-export default App;
+import React, { useState } from 'react'
+import Grid from '@material-ui/core/Grid'
+import Box from '@material-ui/core/Box'
+import { IconButton, Button, CircularProgress } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
+import PhotoCameraRoundedIcon from '@material-ui/icons/PhotoCameraRounded'
 
+const useStyles = makeStyles((theme) => ({
+    root: {
+        height: '100%',
+        textAlign: 'center',
+        flexDirection: 'column',
+    },
+    imgBox: {
+        maxWidth: '80%',
+        maxHeight: '80%',
+        margin: '10px',
+    },
+    img: {
+        height: 'inherit',
+        maxWidth: 'inherit',
+    },
+    input: {
+        display: 'none',
+    },
+    button: {
+        flex: 1,
+        color: 'blue',
+        fill: 'blue',
+    },
+}))
+
+function App() {
+    const classes = useStyles()
+    const [source, setSource] = useState(false)
+    const [formData, setFormData] = useState()
+    const [isLoading, setIsLoading] = useState(false)
+    const [isResultShowing, setIsResultShowing] = useState(false)
+
+    const handleCapture = (target) => {
+        if (target.files) {
+            if (target.files.length !== 0) {
+                const file = target.files[0]
+                const formData = new FormData()
+                formData.append('image', file)
+                setFormData(formData)
+                const newUrl = URL.createObjectURL(file)
+                setSource(newUrl)
+            }
+        }
+    }
+
+    const sendImage = async () => {
+        setIsLoading(true)
+        setIsResultShowing(true)
+        // const res = await fetch('http://localhost:5000')
+        fetch('http://localhost:5000/predict', {
+            method: 'POST',
+            body: formData,
+        })
+            .then((response) => {
+                setIsLoading(false)
+                const reader = response.body.getReader()
+                return new ReadableStream({
+                    start(controller) {
+                        return pump()
+                        function pump() {
+                            return reader.read().then(({ done, value }) => {
+                                // When no more data needs to be consumed, close the stream
+                                if (done) {
+                                    controller.close()
+                                    return
+                                }
+                                // Enqueue the next data chunk into our target stream
+                                controller.enqueue(value)
+                                return pump()
+                            })
+                        }
+                    },
+                })
+            })
+            .then((stream) => new Response(stream))
+            .then((response) => response.blob())
+            .then((blob) => URL.createObjectURL(blob))
+            .then((url) => setSource(url))
+            .catch((err) => console.error(err))
+    }
+
+    return (
+        <div className={classes.root}>
+            <Grid container direction="column">
+                <Grid
+                    container
+                    direction="column"
+                    item
+                    xs={12}
+                    justifyContent="center"
+                    alignItems="center"
+                >
+                    <h5>Capture your image</h5>
+                    {source && (
+                        <Box
+                            display="flex"
+                            justifyContent="center"
+                            border={1}
+                            className={classes.imgBox}
+                        >
+                            <img
+                                src={source}
+                                alt={'snap'}
+                                className={classes.img}
+                            ></img>
+                        </Box>
+                    )}
+                    <input
+                        accept="image/*"
+                        className={classes.input}
+                        id="icon-button-file"
+                        type="file"
+                        capture="environment"
+                        onChange={(e) => handleCapture(e.target)}
+                    />
+                    <label htmlFor="icon-button-file">
+                        <IconButton
+                            color="primary"
+                            aria-label="upload picture"
+                            component="span"
+                        >
+                            <PhotoCameraRoundedIcon
+                                fontSize="large"
+                                color="primary"
+                            />
+                        </IconButton>
+                    </label>
+                    {isLoading && <CircularProgress />}
+                    {!source & !isResultShowing ? null : (
+                        <Button
+                            onClick={sendImage}
+                            style={{ flex: 1 }}
+                            variant="contained"
+                            color="primary"
+                        >
+                            <h5>Analyse image</h5>
+                        </Button>
+                    )}
+                </Grid>
+            </Grid>
+        </div>
+    )
+}
+export default App
