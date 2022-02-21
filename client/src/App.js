@@ -1,7 +1,12 @@
 import React, { useState } from 'react'
 import Grid from '@material-ui/core/Grid'
 import Box from '@material-ui/core/Box'
-import { IconButton, Button, CircularProgress } from '@material-ui/core'
+import {
+    IconButton,
+    Button,
+    CircularProgress,
+    TextField,
+} from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import PhotoCameraRoundedIcon from '@material-ui/icons/PhotoCameraRounded'
 
@@ -33,27 +38,32 @@ const useStyles = makeStyles((theme) => ({
 function App() {
     const classes = useStyles()
     const [source, setSource] = useState(false)
-    const [formData, setFormData] = useState()
+    const [image, setImage] = useState()
     const [isLoading, setIsLoading] = useState(false)
     const [isResultShowing, setIsResultShowing] = useState(false)
+    const [registrationNumberInput, setRegistrationNumberInput] = useState('')
 
     const handleCapture = (target) => {
         if (target.files) {
             if (target.files.length !== 0) {
                 const file = target.files[0]
-                const formData = new FormData()
-                formData.append('image', file)
-                setFormData(formData)
+                setImage(file)
                 const newUrl = URL.createObjectURL(file)
                 setSource(newUrl)
             }
         }
     }
 
+    const handleOnChange = (e) => {
+        setRegistrationNumberInput(e.target.value)
+    }
+
     const sendImage = async () => {
         setIsLoading(true)
         setIsResultShowing(true)
-        // const res = await fetch('http://localhost:5000')
+        const formData = new FormData()
+        formData.append('image', image)
+        formData.append('registration', registrationNumberInput)
         fetch('http://localhost:5000/predict', {
             method: 'POST',
             body: formData,
@@ -134,14 +144,22 @@ function App() {
                     </label>
                     {isLoading && <CircularProgress />}
                     {!source & !isResultShowing ? null : (
-                        <Button
-                            onClick={sendImage}
-                            style={{ flex: 1 }}
-                            variant="contained"
-                            color="primary"
-                        >
-                            <h5>Analyse image</h5>
-                        </Button>
+                        <div>
+                            <div style={{ margin: 30 }}>
+                                <TextField
+                                    placeholder="Vehicle registration"
+                                    onChange={handleOnChange}
+                                ></TextField>
+                            </div>
+                            <Button
+                                onClick={sendImage}
+                                style={{ flex: 1 }}
+                                variant="contained"
+                                color="primary"
+                            >
+                                <h5>Analyse image</h5>
+                            </Button>
+                        </div>
                     )}
                 </Grid>
             </Grid>

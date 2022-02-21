@@ -8,10 +8,10 @@ import errno, shutil, stat
 from torchvision import models
 import torchvision.transforms as transforms
 from PIL import Image
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='./build')
 CORS(app)
 
 def get_prediction(fileName):
@@ -22,8 +22,9 @@ def get_prediction(fileName):
     return analysedImage
 
 @app.route('/')
-def hello():
-    return 'howdy'
+def serve():
+    return render_template("index.html")
+    # return send_from_directory('./static/build','index.htm  l')
 
 @app.route('/predict', methods=['POST'])
 def predict():
