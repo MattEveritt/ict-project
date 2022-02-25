@@ -13,12 +13,12 @@ from flask_cors import CORS
 app = Flask(__name__, static_url_path='')
 CORS(app)
 
-def get_prediction(fileName):
+def get_prediction(fileName, reg):
     # img = open('./images/{}'.format(fileName), 'r')
-    script = 'python ./yolov5/detect.py --img 1280 --weights ./yolov5/truck_model.pt --line-thickness 1 --save-txt --conf-thres 0.6 --source "./images/{}" --name "./images"'.format(fileName)
+    script = 'python ./yolov5/detect.py --img 1280 --weights ./yolov5/truck_model.pt --line-thickness 1 --save-txt --conf-thres 0.6 --source "./images/{}" --name "./images" --reg {}'.format(fileName, reg)
     result_success = subprocess.run(script, shell=True)
-    analysedImage = open('./yolov5/runs/detect/images/{}'.format(fileName))
-    return analysedImage
+    # analysedImage = open('./yolov5/runs/detect/images/{}'.format(fileName))
+    return
 
 @app.route('/')
 def serve():
@@ -30,11 +30,12 @@ def predict():
     if request.method == 'POST':
         if os.path.exists('./yolov5/runs/detect'):
             shutil.rmtree('./yolov5/runs/detect', ignore_errors=False, onerror= 'error removing detect folder')
+        print(request.form)
         file = request.files['image']
+        reg = request.form['registration']
         fileName = file.filename
         file.save('./images/{}'.format(fileName))
-        image = get_prediction(fileName)
-        print(image)
+        get_prediction(fileName, reg)
         os.remove('./images/{}'.format(file.filename))
         return send_file(
             './yolov5/runs/detect/images/{}'.format(fileName), 
